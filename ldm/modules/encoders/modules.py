@@ -172,6 +172,37 @@ class FrozenCLIPImageEmbedder(AbstractEncoder):
         return self(image)
 
 
+class FrozenCLIPTextEmbedder(AbstractEncoder):
+    """Frozen CLIP text encoder (ViT-L/14). Returns (B, 77, 768)."""
+    def __init__(self, version="openai/clip-vit-large-patch14", max_length=77):
+        super().__init__()
+        self.tokenizer = CLIPTokenizer.from_pretrained(version)
+        self.transformer = CLIPTextModel.from_pretrained(version)
+        self.max_length = max_length
+        self.freeze()
+
+    def freeze(self):
+        self.transformer = self.transformer.eval()
+        for param in self.parameters():
+            param.requires_grad = False
+
+    def forward(self, text):
+        tokens = self.tokenizer(
+            text,
+            truncation=True,
+            max_length=self.max_length,
+            padding="max_length",
+            return_tensors="pt",
+        )
+        input_ids = tokens.input_ids.to(self.transformer.device)
+        attention_mask = tokens.attention_mask.to(self.transformer.device)
+        outputs = self.transformer(input_ids=input_ids, attention_mask=attention_mask)
+        return outputs.last_hidden_state  # (B, 77, 768)
+
+    def encode(self, text):
+        return self(text)
+
+
 if __name__ == "__main__":
     from ldm.util import count_params
     model = FrozenCLIPImageEmbedder()
