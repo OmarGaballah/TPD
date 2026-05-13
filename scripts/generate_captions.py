@@ -9,8 +9,7 @@ from tqdm import tqdm
 
 
 PROMPT = (
-    "Describe this clothing item concisely: color, pattern, "
-    "material if visible, sleeve length, and fit. Max 20 words."
+    "In under 15 words, describe this garment: color, pattern, sleeve length, fit."
 )
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
@@ -77,7 +76,7 @@ def caption_image(path: Path, processor, model) -> str:
     with torch.inference_mode():
         output_ids = model.generate(
             **inputs,
-            max_new_tokens=60,
+            max_new_tokens=30,
             do_sample=False,
         )
 
