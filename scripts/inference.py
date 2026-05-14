@@ -15,8 +15,7 @@ from torch import autocast
 from contextlib import nullcontext
 import torchvision
 from typing import List
-sys.path[0] = "/home/yx/code/virtual_tryon/TPD"
-print(sys.path)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from ldm.util import instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler

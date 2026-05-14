@@ -3,7 +3,11 @@ Dry-run validation of the CLIP text conditioning pipeline.
 Run from the TPD root: python scripts/test_caption_pipeline.py
 Requires: dataset images present, conda TPD environment active.
 """
-import os
+import sys, os
+# Ensure the TPD root is first on sys.path so our ldm/ package takes
+# priority over any system-installed ldm.py (e.g. Kaggle's Python 2 file).
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 import torch
 from omegaconf import OmegaConf
 from torch.utils.data import DataLoader
