@@ -87,7 +87,7 @@ def get_tensor(normalize=True, toTensor=True):
 
 
 class try_on_dataset_VITONHD(data.Dataset):
-    def __init__(self, state, order: str = 'paired', pairs_file: str = None, **args):
+    def __init__(self, state, order: str = 'paired', pairs_file: str = None, captions_path=None, **args):
         self.state = state
         self.args = args
         self.kernel = np.ones((1, 1), np.uint8)
@@ -129,6 +129,11 @@ class try_on_dataset_VITONHD(data.Dataset):
 
 
         self.length = len(self.source_dir)
+
+        self.captions = {}
+        if captions_path is not None:
+            with open(captions_path) as f:
+                self.captions = json.load(f)
 
     def __getitem__(self, index):
         source_path = self.source_dir[index]
@@ -271,7 +276,8 @@ class try_on_dataset_VITONHD(data.Dataset):
         # image_name
         image_name = os.path.split(source_path)[-1]
 
-
+        c_name = os.path.basename(ref_path)
+        caption = self.captions.get(c_name, "")
 
         return {
             "image_name": image_name,
@@ -282,6 +288,7 @@ class try_on_dataset_VITONHD(data.Dataset):
             "posemap": pose_combined,
             "densepose": densepose_combined,
             "ref_list": ref_tensors,
+            "caption": caption,
         }
 
     def __len__(self):

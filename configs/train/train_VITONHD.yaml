@@ -80,6 +80,7 @@ data:
               dataset_dir: datasets/VITONHD
               order: paired
               image_size: 224
+              captions_path: datasets/VITONHD/captions.json
       validation:
           target: ldm.data.dataset_VITONHD.try_on_dataset_VITONHD
           params:

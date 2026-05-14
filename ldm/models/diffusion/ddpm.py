@@ -42,6 +42,7 @@ from ldm.modules.diffusionmodules.util import (
 )
 from ldm.models.diffusion.ddim import DDIMSampler
 from torchvision.transforms import Resize
+from ldm.modules.encoders.modules import FrozenCLIPTextEmbedder
 import math
 import time
 import random
@@ -597,10 +598,7 @@ class LatentDiffusion(DDPM):
         ckpt_path = kwargs.pop("ckpt_path", None)
         ignore_keys = kwargs.pop("ignore_keys", [])
         super().__init__(conditioning_key=conditioning_key, *args, **kwargs)
-        self.learnable_vector = nn.Parameter(
-            torch.randn((1, 1, 768)), requires_grad=True
-        )
-        self.proj_out = nn.Linear(1024, 768)
+        self.cond_stage_model = FrozenCLIPTextEmbedder()
 
         self.concat_mode = concat_mode
         self.cond_stage_trainable = cond_stage_trainable
@@ -1146,19 +1144,21 @@ class LatentDiffusion(DDPM):
 
     def shared_step(self, batch, **kwargs):
         x = self.get_input(batch, self.first_stage_key)
-        loss = self(x)
+        captions = batch.get("caption", [""] * x.shape[0])
+        loss = self(x, captions=captions)
         return loss
 
-    def forward(self, x, *args, **kwargs):
+    def forward(self, x, *args, captions=None, **kwargs):
         self.opt.params = self.params
         t = torch.randint(
             0, self.num_timesteps, (x.shape[0],), device=self.device
         ).long()  # 随机选取反向扩散任意一步的噪声做损失函数
+        if captions is None:
+            captions = [""] * x.shape[0]
+        c = self.cond_stage_model.encode(captions)
         return self.p_losses(
             x,
-            [
-                self.learnable_vector.repeat(x.shape[0], 1, 1).to(self.device),
-            ],
+            [c],
             t,
             *args,
             **kwargs,
@@ -1779,8 +1779,9 @@ class LatentDiffusion(DDPM):
             log["diffusion_row"] = diffusion_grid
 
 
-        uc = self.learnable_vector
-        c = uc.repeat(z.size(0), 1, 1)
+        c = self.cond_stage_model.encode(
+            batch.get("caption", [""] * z.size(0))[:z.size(0)]
+        )
 
 
         if sample:
@@ -1898,11 +1899,7 @@ class LatentDiffusion(DDPM):
         print(f"{self.__class__.__name__}: Optimizing UNet params!")
         for param in self.model.diffusion_model.parameters():
             param.requires_grad = True
-        params = params + list(self.model.diffusion_model.parameters()) + list(self.proj_out.parameters())
-
-
-        self.learnable_vector.require_grad = True
-        params.append(self.learnable_vector)
+        params = list(self.model.diffusion_model.parameters())
 
         param_groups = [{"params": params}]
 

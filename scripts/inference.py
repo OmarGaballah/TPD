@@ -297,6 +297,13 @@ def main():
     )
 
 
+    parser.add_argument(
+        "--captions_json",
+        type=str,
+        default="",
+        help="path to captions.json for text conditioning (optional; falls back to empty strings)",
+    )
+
     opt = parser.parse_args()
 
 
@@ -304,6 +311,9 @@ def main():
 
     config = OmegaConf.load(f"{opt.config}")
     model = load_model_from_config(config, f"{opt.ckpt}")
+
+    if opt.captions_json:
+        config.data.params.test.params.captions_path = opt.captions_json
 
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     model = model.to(device)
@@ -394,9 +404,9 @@ def main():
                     test_model_kwargs['posemap'] = z_posemap
                     test_model_kwargs['densepose'] = z_densepose
 
-                    uc = model.learnable_vector
-                    uc = uc.repeat(person.size(0), 1, 1)
-                    c = uc
+                    captions = batch.get("caption", [""] * person.size(0))
+                    c = model.cond_stage_model.encode(captions)
+                    uc = model.cond_stage_model.encode([""] * person.size(0))
 
                     shape = [opt.C, opt.H // opt.f, opt.W // opt.f]
 
