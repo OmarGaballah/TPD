@@ -1894,12 +1894,23 @@ class LatentDiffusion(DDPM):
 
     def configure_optimizers(self):
         lr = self.learning_rate
-        params = list()
 
-        print(f"{self.__class__.__name__}: Optimizing UNet params!")
-        for param in self.model.diffusion_model.parameters():
-            param.requires_grad = True
-        params = list(self.model.diffusion_model.parameters())
+        # Phase 1: freeze everything, then unfreeze only cross-attention K and V
+        for param in self.parameters():
+            param.requires_grad = False
+
+        params = []
+        trainable = 0
+        for name, param in self.model.diffusion_model.named_parameters():
+            if 'attn2' in name and ('to_k' in name or 'to_v' in name):
+                param.requires_grad = True
+                params.append(param)
+                trainable += param.numel()
+                print(f"  Trainable: {name}")
+
+        print(f"{self.__class__.__name__}: Phase 1 — training cross-attn K/V only")
+        print(f"  Trainable parameters : {trainable:,}")
+        print(f"  Total parameters     : {sum(p.numel() for p in self.parameters()):,}")
 
         param_groups = [{"params": params}]
 
