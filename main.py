@@ -149,10 +149,8 @@ def get_parser(**parser_kwargs):
 
 
 def nondefault_trainer_args(opt):
-    parser = argparse.ArgumentParser()
-    parser = Trainer.add_argparse_args(parser)
-    args = parser.parse_args([])
-    return sorted(k for k in vars(args) if getattr(opt, k) != getattr(args, k))
+    # Trainer.add_argparse_args removed in PL 2.0; trainer args come from YAML only
+    return []
 
 
 class WrappedDataset(Dataset):
@@ -548,8 +546,6 @@ if __name__ == "__main__":
     sys.path.append(os.getcwd())
 
     parser = get_parser()
-    parser = Trainer.add_argparse_args(parser)
-
     opt, unknown = parser.parse_known_args()
     if opt.name and opt.resume:
         raise ValueError(
@@ -600,15 +596,19 @@ if __name__ == "__main__":
     lightning_config = config.pop("lightning", OmegaConf.create())
     # merge trainer cli with config
     trainer_config = lightning_config.get("trainer", OmegaConf.create())
-    # default to ddp
-    trainer_config["accelerator"] = "ddp"
+    # PL 2.0: strategy="ddp" + accelerator="gpu" replaces accelerator="ddp"
+    trainer_config["strategy"] = "ddp"
+    trainer_config["accelerator"] = "gpu"
     for k in nondefault_trainer_args(opt):
         trainer_config[k] = getattr(opt, k)
-    if not "gpus" in trainer_config:
-        del trainer_config["accelerator"]
+    if "gpus" not in trainer_config:
+        trainer_config["accelerator"] = "cpu"
+        del trainer_config["strategy"]
         cpu = True
     else:
-        gpuinfo = trainer_config["gpus"]
+        # PL 2.0: gpus renamed to devices
+        gpuinfo = trainer_config.pop("gpus")
+        trainer_config["devices"] = gpuinfo
         print(f"Running on GPUs {gpuinfo}")
         cpu = False
     trainer_opt = argparse.Namespace(**trainer_config)
@@ -734,7 +734,7 @@ if __name__ == "__main__":
         instantiate_from_config(callbacks_cfg[k]) for k in callbacks_cfg
     ]
 
-    trainer = Trainer.from_argparse_args(trainer_opt, **trainer_kwargs, precision=16)
+    trainer = Trainer(**OmegaConf.to_container(trainer_config), **trainer_kwargs, precision="16-mixed")
 
     trainer.logdir = logdir
 
