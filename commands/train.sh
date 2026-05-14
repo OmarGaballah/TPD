@@ -1,7 +1,7 @@
-# VITONHD_release_person_combine_garment_240epochs
-CUDA_VISIBLE_DEVICES=0,1,2,3 python main.py \
+# VITONHD_phase1_crossattn_captions
+CUDA_VISIBLE_DEVICES=0,1 python main.py \
 --logdir train_logs/VITONHD/ \
---pretrained_model checkpoints/original/model_prepared.ckpt \
+--pretrained_model checkpoints/release/TPD_240epochs.ckpt \
 --base configs/train/train_VITONHD.yaml \
 --scale_lr False \
---name VITONHD_release_person_combine_garment_240epochs
+--name VITONHD_phase1_crossattn_captions

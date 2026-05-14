@@ -71,7 +71,7 @@ model:
 data:
   target: main.DataModuleFromConfig
   params:
-      batch_size: 10
+      batch_size: 4
       wrap: False
       train:
           target: ldm.data.dataset_VITONHD.try_on_dataset_VITONHD
@@ -101,6 +101,6 @@ lightning:
     max_epochs: 240
     num_nodes: 1
     accelerator: 'gpu'
-    gpus: "0,1,2,3"
+    gpus: "0,1"
     limit_val_batches: 0.5
     check_val_every_n_epoch: 10
