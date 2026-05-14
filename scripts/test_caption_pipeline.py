@@ -19,6 +19,13 @@ def main():
     print(f"Loading config: {config_path}")
     config = OmegaConf.load(config_path)
 
+    # Kaggle dataset path override
+    _kaggle_root = "/kaggle/input/datasets/marquis03/high-resolution-viton-zalando-dataset"
+    if os.path.exists(_kaggle_root):
+        print(f"Kaggle dataset detected — overriding dataset_dir and pairs_file")
+        config.data.params.train.params.dataset_dir = _kaggle_root
+        config.data.params.train.params.pairs_file = os.path.join(_kaggle_root, "train_pairs.txt")
+
     # If captions.json doesn't exist yet, disable it so the dataset still loads
     captions_path = config.data.params.train.params.get("captions_path", None)
     if captions_path and not os.path.exists(captions_path):
