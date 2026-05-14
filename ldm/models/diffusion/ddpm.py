@@ -600,6 +600,14 @@ class LatentDiffusion(DDPM):
         super().__init__(conditioning_key=conditioning_key, *args, **kwargs)
         self.cond_stage_model = FrozenCLIPTextEmbedder()
 
+        # Phase 1: freeze all params before DDP wraps the model.
+        # Must happen here — configure_optimizers runs after DDP and is too late.
+        for param in self.parameters():
+            param.requires_grad = False
+        for name, param in self.model.diffusion_model.named_parameters():
+            if 'attn2' in name and ('to_k' in name or 'to_v' in name):
+                param.requires_grad = True
+
         self.concat_mode = concat_mode
         self.cond_stage_trainable = cond_stage_trainable
         self.cond_stage_key = cond_stage_key
@@ -1895,22 +1903,15 @@ class LatentDiffusion(DDPM):
     def configure_optimizers(self):
         lr = self.learning_rate
 
-        # Phase 1: freeze everything, then unfreeze only cross-attention K and V
-        for param in self.parameters():
-            param.requires_grad = False
-
-        params = []
-        trainable = 0
-        for name, param in self.model.diffusion_model.named_parameters():
-            if 'attn2' in name and ('to_k' in name or 'to_v' in name):
-                param.requires_grad = True
-                params.append(param)
-                trainable += param.numel()
-                print(f"  Trainable: {name}")
-
+        # Freezing already applied in __init__ before DDP wraps the model.
+        # Collect whichever params were marked trainable there.
+        params = [p for p in self.model.diffusion_model.parameters()
+                  if p.requires_grad]
+        trainable = sum(p.numel() for p in params)
+        total = sum(p.numel() for p in self.parameters())
         print(f"{self.__class__.__name__}: Phase 1 — training cross-attn K/V only")
         print(f"  Trainable parameters : {trainable:,}")
-        print(f"  Total parameters     : {sum(p.numel() for p in self.parameters()):,}")
+        print(f"  Total parameters     : {total:,}")
 
         param_groups = [{"params": params}]
 
