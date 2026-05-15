@@ -202,8 +202,8 @@ class DataModuleFromConfig(pl.LightningDataModule):
         self.batch_size = batch_size
         self.dataset_configs = dict()
         # self.num_workers = num_workers if num_workers is not None else batch_size * 2
-        self.num_workers = 20
-        # self.num_workers = 0
+        # self.num_workers = 20
+        self.num_workers = 2
 
         self.use_worker_init_fn = use_worker_init_fn
         if train is not None:

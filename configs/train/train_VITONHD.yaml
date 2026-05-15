@@ -11,7 +11,7 @@ model:
     cond_stage_key: "caption"
     image_size: 64
     channels: 5
-    cond_stage_trainable: true   # Note: different from the one we trained before
+    cond_stage_trainable: true # Note: different from the one we trained before
     conditioning_key: crossattn
     monitor: train/loss
     u_cond_percent: 0.2
@@ -21,11 +21,11 @@ model:
     scheduler_config: # 10000 warmup steps
       target: ldm.lr_scheduler.LambdaLinearScheduler
       params:
-        warm_up_steps: [ 10000 ]
-        cycle_lengths: [ 10000000000000 ] # incredibly large number to prevent corner cases
-        f_start: [ 1e-6 ]
-        f_max: [ 1. ]
-        f_min: [ 1. ]
+        warm_up_steps: [10000]
+        cycle_lengths: [10000000000000] # incredibly large number to prevent corner cases
+        f_start: [1e-6]
+        f_max: [1.]
+        f_min: [1.]
 
     unet_config:
       target: ldm.modules.diffusionmodules.openaimodel.UNetModel
@@ -34,9 +34,9 @@ model:
         in_channels: 18
         out_channels: 5
         model_channels: 320
-        attention_resolutions: [ 4, 2, 1 ]
+        attention_resolutions: [4, 2, 1]
         num_res_blocks: 2
-        channel_mult: [ 1, 2, 4, 4 ]
+        channel_mult: [1, 2, 4, 4]
         num_heads: 8
         use_spatial_transformer: True
         transformer_depth: 1
@@ -58,10 +58,10 @@ model:
           out_ch: 3
           ch: 128
           ch_mult:
-          - 1
-          - 2
-          - 4
-          - 4
+            - 1
+            - 2
+            - 4
+            - 4
           num_res_blocks: 2
           attn_resolutions: []
           dropout: 0.0
@@ -71,36 +71,36 @@ model:
 data:
   target: main.DataModuleFromConfig
   params:
-      batch_size: 4
-      wrap: False
-      train:
-          target: ldm.data.dataset_VITONHD.try_on_dataset_VITONHD
-          params:
-              state: train
-              dataset_dir: datasets/VITONHD
-              order: paired
-              image_size: 224
-              captions_path: datasets/VITONHD/captions.json
-      validation:
-          target: ldm.data.dataset_VITONHD.try_on_dataset_VITONHD
-          params:
-              state: validation
-              dataset_dir: datasets/VITONHD
-              order: unpaired
-              image_size: 224
-      test:
-          target: ldm.data.dataset_VITONHD.try_on_dataset_VITONHD
-          params:
-              state: test
-              dataset_dir: datasets/VITONHD
-              order: unpaired
-              image_size: 224
+    batch_size: 4
+    wrap: False
+    train:
+      target: ldm.data.dataset_VITONHD.try_on_dataset_VITONHD
+      params:
+        state: train
+        dataset_dir: datasets/VITONHD
+        order: paired
+        image_size: 224
+        captions_path: datasets/VITONHD/captions.json
+    validation:
+      target: ldm.data.dataset_VITONHD.try_on_dataset_VITONHD
+      params:
+        state: validation
+        dataset_dir: datasets/VITONHD
+        order: unpaired
+        image_size: 224
+    test:
+      target: ldm.data.dataset_VITONHD.try_on_dataset_VITONHD
+      params:
+        state: test
+        dataset_dir: datasets/VITONHD
+        order: unpaired
+        image_size: 224
 
 lightning:
   trainer:
     max_epochs: 240
     num_nodes: 1
-    accelerator: 'gpu'
+    accelerator: "gpu"
     gpus: "0,1"
     limit_val_batches: 0.5
     check_val_every_n_epoch: 10
