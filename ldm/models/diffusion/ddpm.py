@@ -1160,7 +1160,6 @@ class LatentDiffusion(DDPM):
         return loss
 
     def forward(self, x, *args, captions=None, **kwargs):
-        self.opt.params = self.params
         t = torch.randint(
             0, self.num_timesteps, (x.shape[0],), device=self.device
         ).long()  # 随机选取反向扩散任意一步的噪声做损失函数
@@ -1754,17 +1753,21 @@ class LatentDiffusion(DDPM):
         log["posemap"] = posemap
         log["densepose"] = densepose
 
+        c = self.cond_stage_model.encode(
+            batch.get("caption", [""] * z.size(0))[:z.size(0)]
+        )
+
         if self.model.conditioning_key is not None:
             if hasattr(self.cond_stage_model, "decode"):
                 xc = self.cond_stage_model.decode(c)
                 log["conditioning"] = xc
             elif self.cond_stage_key in ["caption", "txt"]:
                 xc = log_txt_as_img(
-                    (x.shape[2], x.shape[3]), batch[self.cond_stage_key]
+                    (GT_image.shape[2], GT_image.shape[3]), batch[self.cond_stage_key]
                 )
                 log["conditioning"] = xc
             elif self.cond_stage_key == "class_label":
-                xc = log_txt_as_img((x.shape[2], x.shape[3]), batch["human_label"])
+                xc = log_txt_as_img((GT_image.shape[2], GT_image.shape[3]), batch["human_label"])
                 log["conditioning"] = xc
             elif isimage(ref):
                 log["conditioning"] = ref
@@ -1788,12 +1791,6 @@ class LatentDiffusion(DDPM):
             diffusion_grid = rearrange(diffusion_grid, "b n c h w -> (b n) c h w")
             diffusion_grid = make_grid(diffusion_grid, nrow=diffusion_row.shape[0])
             log["diffusion_row"] = diffusion_grid
-
-
-        c = self.cond_stage_model.encode(
-            batch.get("caption", [""] * z.size(0))[:z.size(0)]
-        )
-
 
         if sample:
             # get denoise row
