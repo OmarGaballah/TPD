@@ -1,28 +1,43 @@
+import argparse
 import os
 from PIL import Image
-from torchvision.transforms import ToTensor
 
-def get_tensor():
-    return ToTensor()
 
 def resize_images(source_dir, target_dir, target_size):
-    if not os.path.exists(target_dir):
-        os.makedirs(target_dir)
-
+    os.makedirs(target_dir, exist_ok=True)
     for filename in os.listdir(source_dir):
         if filename.endswith(".jpg") or filename.endswith(".png"):
             source_path = os.path.join(source_dir, filename)
             target_path = os.path.join(target_dir, filename)
-
-            source_img = Image.open(source_path).convert("RGB")
-            source_img = source_img.resize(target_size, Image.BILINEAR)
-            source_img.save(target_path)
-
+            img = Image.open(source_path).convert("RGB")
+            img = img.resize(target_size, Image.BILINEAR)
+            img.save(target_path)
     print("Image resizing completed.")
 
-source_directory = "../datasets/test/image"
-target_directory = "../datasets/test/image_512"
 
-target_size = (384, 512) 
+def main():
+    parser = argparse.ArgumentParser(
+        description="Resize images from source directory into target directory."
+    )
+    parser.add_argument(
+        "--source", required=True,
+        help="Path to the source image directory"
+    )
+    parser.add_argument(
+        "--target", required=True,
+        help="Path to the output directory"
+    )
+    parser.add_argument(
+        "--width", type=int, default=384,
+        help="Target width in pixels (default: 384)"
+    )
+    parser.add_argument(
+        "--height", type=int, default=512,
+        help="Target height in pixels (default: 512)"
+    )
+    args = parser.parse_args()
+    resize_images(args.source, args.target, (args.width, args.height))
 
-resize_images(source_directory, target_directory, target_size)
+
+if __name__ == "__main__":
+    main()

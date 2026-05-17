@@ -1,11 +1,12 @@
 """
 Dry-run validation of the CLIP text conditioning pipeline.
 Run from the TPD root: python scripts/test_caption_pipeline.py
-Requires: dataset images present, conda TPD environment active.
+
+Optional env var overrides:
+  DATASET_DIR   path to the VITONHD dataset root  (default: datasets/VITONHD)
+  CAPTIONS_PATH path to captions.json             (default: from YAML)
 """
 import sys, os
-# Ensure the TPD root is first on sys.path so our ldm/ package takes
-# priority over any system-installed ldm.py (e.g. Kaggle's Python 2 file).
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import torch
@@ -19,14 +20,21 @@ def main():
     print(f"Loading config: {config_path}")
     config = OmegaConf.load(config_path)
 
-    # Kaggle dataset path override
-    _kaggle_root = "/kaggle/input/datasets/marquis03/high-resolution-viton-zalando-dataset"
-    if os.path.exists(_kaggle_root):
-        print(f"Kaggle dataset detected — overriding dataset_dir and pairs_file")
-        config.data.params.train.params.dataset_dir = _kaggle_root
-        config.data.params.train.params.pairs_file = os.path.join(_kaggle_root, "train_pairs.txt")
+    # Allow dataset_dir to be overridden via environment variable so this
+    # script works on Kaggle, Colab, and local machines without code changes.
+    dataset_dir = os.environ.get("DATASET_DIR", "")
+    if dataset_dir and os.path.exists(dataset_dir):
+        print(f"DATASET_DIR override detected: {dataset_dir}")
+        for split in ("train", "validation", "test"):
+            if hasattr(config.data.params, split):
+                getattr(config.data.params, split).params.dataset_dir = dataset_dir
 
-    # If captions.json doesn't exist yet, disable it so the dataset still loads
+    # Allow captions_path to be overridden via environment variable.
+    captions_override = os.environ.get("CAPTIONS_PATH", "")
+    if captions_override:
+        config.data.params.train.params.captions_path = captions_override
+
+    # If captions.json doesn't exist yet, disable it so the dataset still loads.
     captions_path = config.data.params.train.params.get("captions_path", None)
     if captions_path and not os.path.exists(captions_path):
         print(f"Warning: {captions_path} not found — captions will be empty strings")
@@ -37,12 +45,6 @@ def main():
     model = instantiate_from_config(config.model)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
-
-    # Wire up optimizer state so forward() doesn't AttributeError on self.opt
-    model.params = list(model.model.diffusion_model.parameters())
-    class _FakeOpt:
-        params = None
-    model.opt = _FakeOpt()
     model.train()
 
     # 2. Load one batch from the training dataset
@@ -51,7 +53,6 @@ def main():
     loader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0)
     batch = next(iter(loader))
 
-    # Move tensors to device
     for k, v in batch.items():
         if isinstance(v, torch.Tensor):
             batch[k] = v.to(device)
@@ -78,7 +79,6 @@ def main():
         loss, loss_dict = model.shared_step(batch)
     print(f"Loss: {loss.item():.4f}")
 
-    # 8.
     print("\nALL CHECKS PASSED")
 
 
