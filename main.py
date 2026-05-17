@@ -1,4 +1,13 @@
 import argparse, os, sys, datetime, glob, importlib, csv
+
+# Keras 3.x removed keras.backend.is_tensor; patch it before albumentations loads.
+try:
+    import keras.backend as _kb
+    import torch as _torch
+    if not hasattr(_kb, 'is_tensor'):
+        _kb.is_tensor = _torch.is_tensor
+except Exception:
+    pass
 import numpy as np
 import time
 import torch
