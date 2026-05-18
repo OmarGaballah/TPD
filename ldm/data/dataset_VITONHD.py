@@ -25,6 +25,15 @@ import torchvision.transforms as T
 import copy
 import math
 from functools import partial
+# Keras 3.x removed keras.backend.is_tensor; patch before albumentations loads it.
+try:
+    import keras.backend as _kb
+    import torch as _torch
+    if not hasattr(_kb, 'is_tensor'):
+        _kb.is_tensor = _torch.is_tensor
+except Exception:
+    pass
+
 import albumentations as A
 import bezier
 from numpy import asarray
