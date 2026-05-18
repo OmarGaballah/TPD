@@ -77,22 +77,24 @@ data:
       target: ldm.data.dataset_VITONHD.try_on_dataset_VITONHD
       params:
         state: train
-        dataset_dir: datasets/VITONHD
+        dataset_dir: /kaggle/input/datasets/marquis03/high-resolution-viton-zalando-dataset
+        pairs_file: /kaggle/input/datasets/marquis03/high-resolution-viton-zalando-dataset/train_pairs.txt
         order: paired
         image_size: 224
-        captions_path: datasets/VITONHD/captions.json
     validation:
       target: ldm.data.dataset_VITONHD.try_on_dataset_VITONHD
       params:
-        state: validation
-        dataset_dir: datasets/VITONHD
+        state: test
+        dataset_dir: /kaggle/input/datasets/marquis03/high-resolution-viton-zalando-dataset
+        pairs_file: /kaggle/input/datasets/marquis03/high-resolution-viton-zalando-dataset/test_pairs.txt
         order: unpaired
         image_size: 224
     test:
       target: ldm.data.dataset_VITONHD.try_on_dataset_VITONHD
       params:
         state: test
-        dataset_dir: datasets/VITONHD
+        dataset_dir: /kaggle/input/datasets/marquis03/high-resolution-viton-zalando-dataset
+        pairs_file: /kaggle/input/datasets/marquis03/high-resolution-viton-zalando-dataset/test_pairs.txt
         order: unpaired
         image_size: 224
 
