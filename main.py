@@ -139,6 +139,12 @@ def get_parser(**parser_kwargs):
         help="path to pretrained model",
     )
     parser.add_argument(
+        "--hf_repo_id",
+        type=str,
+        default="",
+        help="HuggingFace repo id (e.g. 'username/my-model') to upload checkpoints and logs after each epoch. Requires HF_TOKEN env var.",
+    )
+    parser.add_argument(
         "--scale_lr",
         type=str2bool,
         nargs="?",
@@ -312,6 +318,32 @@ class DataModuleFromConfig(pl.LightningDataModule):
             num_workers=self.num_workers,
             worker_init_fn=init_fn,
         )
+
+
+class HuggingFaceCheckpointCallback(Callback):
+    """Uploads the full log directory (checkpoints + configs + TensorBoard) to HF Hub after every epoch."""
+
+    def __init__(self, repo_id, logdir):
+        super().__init__()
+        self.repo_id = repo_id
+        self.logdir = logdir
+        from huggingface_hub import HfApi
+        self.api = HfApi(token=os.environ.get("HF_TOKEN"))
+        self.api.create_repo(repo_id=repo_id, repo_type="model", exist_ok=True)
+        print(f"[HF] Will upload to https://huggingface.co/{repo_id} after each epoch.")
+
+    @rank_zero_only
+    def on_train_epoch_end(self, trainer, pl_module):
+        epoch = trainer.current_epoch
+        print(f"\n[HF] Epoch {epoch} done — uploading artifacts to {self.repo_id} ...")
+        self.api.upload_folder(
+            folder_path=self.logdir,
+            repo_id=self.repo_id,
+            repo_type="model",
+            commit_message=f"epoch {epoch}",
+            ignore_patterns=["*.tmp"],
+        )
+        print(f"[HF] Upload complete for epoch {epoch}.")
 
 
 class SetupCallback(Callback):
@@ -744,6 +776,11 @@ if __name__ == "__main__":
     trainer_kwargs["callbacks"] = [
         instantiate_from_config(callbacks_cfg[k]) for k in callbacks_cfg
     ]
+
+    if getattr(opt, "hf_repo_id", ""):
+        trainer_kwargs["callbacks"].append(
+            HuggingFaceCheckpointCallback(repo_id=opt.hf_repo_id, logdir=logdir)
+        )
 
     trainer = Trainer(**OmegaConf.to_container(trainer_config), **trainer_kwargs, precision="16-mixed")
 

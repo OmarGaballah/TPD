@@ -1165,6 +1165,11 @@ class LatentDiffusion(DDPM):
         ).long()  # 随机选取反向扩散任意一步的噪声做损失函数
         if captions is None:
             captions = [""] * x.shape[0]
+        if self.training and self.u_cond_percent > 0:
+            captions = [
+                "" if random.random() < self.u_cond_percent else cap
+                for cap in captions
+            ]
         c = self.cond_stage_model.encode(captions)
         return self.p_losses(
             x,
