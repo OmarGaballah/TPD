@@ -79,7 +79,7 @@ data:
         state: train
         dataset_dir: /kaggle/input/datasets/marquis03/high-resolution-viton-zalando-dataset
         pairs_file: /kaggle/input/datasets/marquis03/high-resolution-viton-zalando-dataset/train_pairs.txt
-        captions_path: /kaggle/input/datasets/marquis03/high-resolution-viton-zalando-dataset/captions.json
+        captions_path: /kaggle/working/TPD/datasets/VITONHD/captions.json
         order: paired
         image_size: 224
     validation:
@@ -88,7 +88,7 @@ data:
         state: test
         dataset_dir: /kaggle/input/datasets/marquis03/high-resolution-viton-zalando-dataset
         pairs_file: /kaggle/input/datasets/marquis03/high-resolution-viton-zalando-dataset/test_pairs.txt
-        captions_path: /kaggle/input/datasets/marquis03/high-resolution-viton-zalando-dataset/captions.json
+        captions_path: /kaggle/working/TPD/datasets/VITONHD/captions.json
         order: unpaired
         image_size: 224
     test:
