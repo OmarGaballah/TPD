@@ -332,16 +332,19 @@ class HuggingFaceCheckpointCallback(Callback):
         self.api.create_repo(repo_id=repo_id, repo_type="model", exist_ok=True)
         print(f"[HF] Will upload to https://huggingface.co/{repo_id} after each epoch.")
 
-    @rank_zero_only
     def on_train_epoch_end(self, trainer, pl_module):
         epoch = trainer.current_epoch
 
-        # Explicitly save last.ckpt before uploading — don't rely on
-        # ModelCheckpoint having already written it (callback ordering).
+        # trainer.save_checkpoint() does an NCCL broadcast internally in DDP —
+        # ALL ranks must call it together or the other rank deadlocks waiting
+        # for a collective that never comes. Do NOT guard this with rank_zero_only.
         ckpt_path = os.path.join(self.logdir, "checkpoints", "last.ckpt")
         os.makedirs(os.path.dirname(ckpt_path), exist_ok=True)
         trainer.save_checkpoint(ckpt_path)
-        print(f"[HF] Saved checkpoint to {ckpt_path}")
+
+        # Only rank 0 uploads to HF Hub — no duplicate uploads in multi-GPU.
+        if trainer.global_rank != 0:
+            return
 
         print(f"[HF] Epoch {epoch} done — uploading artifacts to {self.repo_id} ...")
         self.api.upload_folder(
