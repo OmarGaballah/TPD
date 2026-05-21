@@ -323,14 +323,19 @@ class DataModuleFromConfig(pl.LightningDataModule):
 class HuggingFaceCheckpointCallback(Callback):
     """Uploads the full log directory (checkpoints + configs + TensorBoard) to HF Hub after every epoch."""
 
-    def __init__(self, repo_id, logdir):
+    def __init__(self, repo_id, logdir, dry_run=False):
         super().__init__()
         self.repo_id = repo_id
         self.logdir = logdir
-        from huggingface_hub import HfApi
-        self.api = HfApi(token=os.environ.get("HF_TOKEN"))
-        self.api.create_repo(repo_id=repo_id, repo_type="model", exist_ok=True)
-        print(f"[HF] Will upload to https://huggingface.co/{repo_id} after each epoch.")
+        self.dry_run = dry_run
+        self.api = None
+        if not dry_run:
+            from huggingface_hub import HfApi
+            self.api = HfApi(token=os.environ.get("HF_TOKEN"))
+            self.api.create_repo(repo_id=repo_id, repo_type="model", exist_ok=True)
+            print(f"[HF] Will upload to https://huggingface.co/{repo_id} after each epoch.")
+        else:
+            print("[HF] dry_run=True — checkpoint will be saved locally but not uploaded.")
 
     def on_train_epoch_end(self, trainer, pl_module):
         epoch = trainer.current_epoch
@@ -343,7 +348,7 @@ class HuggingFaceCheckpointCallback(Callback):
         trainer.save_checkpoint(ckpt_path)
 
         # Only rank 0 uploads to HF Hub — no duplicate uploads in multi-GPU.
-        if trainer.global_rank != 0:
+        if trainer.global_rank != 0 or self.dry_run:
             return
 
         print(f"[HF] Epoch {epoch} done — uploading artifacts to {self.repo_id} ...")
