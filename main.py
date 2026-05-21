@@ -335,7 +335,15 @@ class HuggingFaceCheckpointCallback(Callback):
     @rank_zero_only
     def on_train_epoch_end(self, trainer, pl_module):
         epoch = trainer.current_epoch
-        print(f"\n[HF] Epoch {epoch} done — uploading artifacts to {self.repo_id} ...")
+
+        # Explicitly save last.ckpt before uploading — don't rely on
+        # ModelCheckpoint having already written it (callback ordering).
+        ckpt_path = os.path.join(self.logdir, "checkpoints", "last.ckpt")
+        os.makedirs(os.path.dirname(ckpt_path), exist_ok=True)
+        trainer.save_checkpoint(ckpt_path)
+        print(f"[HF] Saved checkpoint to {ckpt_path}")
+
+        print(f"[HF] Epoch {epoch} done — uploading artifacts to {self.repo_id} ...")
         self.api.upload_folder(
             folder_path=self.logdir,
             repo_id=self.repo_id,
