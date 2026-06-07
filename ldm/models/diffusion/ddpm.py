@@ -589,7 +589,6 @@ class LatentDiffusion(DDPM):
         conditioning_key=None,
         scale_factor=1.0,
         scale_by_std=False,
-        training_phase=1,
         *args,
         **kwargs,
     ):
@@ -604,24 +603,13 @@ class LatentDiffusion(DDPM):
         super().__init__(conditioning_key=conditioning_key, *args, **kwargs)
         self.cond_stage_model = FrozenCLIPTextEmbedder()
 
-        self.training_phase = training_phase
-
-        # Freeze all params before DDP wraps the model.
+        # Phase 1: freeze all params before DDP wraps the model.
         # Must happen here — configure_optimizers runs after DDP and is too late.
         for param in self.parameters():
             param.requires_grad = False
-        if self.training_phase == 1:
-            # Phase 1: cross-attn K/V projections only (~19M params)
-            for name, param in self.model.diffusion_model.named_parameters():
-                if 'attn2' in name and ('to_k' in name or 'to_v' in name):
-                    param.requires_grad = True
-        elif self.training_phase == 2:
-            # Phase 2: all cross-attn layers (Q, K, V, output projections)
-            for name, param in self.model.diffusion_model.named_parameters():
-                if 'attn2' in name:
-                    param.requires_grad = True
-        else:
-            raise ValueError(f"Unknown training_phase: {training_phase!r} (expected 1 or 2)")
+        for name, param in self.model.diffusion_model.named_parameters():
+            if 'attn2' in name and ('to_k' in name or 'to_v' in name):
+                param.requires_grad = True
 
         self.concat_mode = concat_mode
         self.cond_stage_trainable = cond_stage_trainable
@@ -1926,11 +1914,7 @@ class LatentDiffusion(DDPM):
                   if p.requires_grad]
         trainable = sum(p.numel() for p in params)
         total = sum(p.numel() for p in self.parameters())
-        phase_desc = {
-            1: "Phase 1 — training cross-attn K/V only",
-            2: "Phase 2 — training all cross-attn layers",
-        }[self.training_phase]
-        print(f"{self.__class__.__name__}: {phase_desc}")
+        print(f"{self.__class__.__name__}: Phase 1 — training cross-attn K/V only")
         print(f"  Trainable parameters : {trainable:,}")
         print(f"  Total parameters     : {total:,}")
 
