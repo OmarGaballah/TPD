@@ -12,6 +12,7 @@ model:
     image_size: 64
     channels: 5
     cond_stage_trainable: true # Note: different from the one we trained before
+    training_phase: 1
     conditioning_key: crossattn
     monitor: train/loss
     u_cond_percent: 0.2
